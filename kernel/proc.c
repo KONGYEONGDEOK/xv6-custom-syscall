@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "proc_stat.h"
 
 struct cpu cpus[NCPU];
 
@@ -123,6 +124,8 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
+  p->priority = 10;
+  p->syscall_count = 0;
   p->state = USED;
 
   // Allocate a trapframe page.
@@ -687,4 +690,120 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+static int
+proc_state_to_pstate(enum procstate s)
+{
+  switch(s){
+  case UNUSED:
+    return PSTATE_UNUSED;
+  case USED:
+    return PSTATE_USED;
+  case SLEEPING:
+    return PSTATE_SLEEPING;
+  case RUNNABLE:
+    return PSTATE_RUNNABLE;
+  case RUNNING:
+    return PSTATE_RUNNING;
+  case ZOMBIE:
+    return PSTATE_ZOMBIE;
+  default:
+    return -1;
+  }
+}
+
+int
+getprocinfo(uint64 uaddr, int max)
+{
+  struct proc *p;
+  struct proc *cur = myproc();
+  struct proc_stat ps;
+  int count = 0;
+
+  if(max < 0)
+    return -1;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+
+    if(p->state == UNUSED){
+      release(&p->lock);
+      continue;
+    }
+
+    if(count >= max){
+      release(&p->lock);
+      break;
+    }
+
+    ps.pid = p->pid;
+    ps.state = proc_state_to_pstate(p->state);
+    ps.priority = p->priority;
+    ps.sz = p->sz;
+    safestrcpy(ps.name, p->name, sizeof(ps.name));
+
+    release(&p->lock);
+
+    if(copyout(cur->pagetable,
+               uaddr + count * sizeof(struct proc_stat),
+               (char *)&ps,
+               sizeof(struct proc_stat)) < 0){
+      return -1;
+    }
+
+    count++;
+  }
+
+  return count;
+}
+
+int
+setprio(int pid, int priority)
+{
+  struct proc *p;
+
+  if(pid <= 0)
+    return -1;
+
+  if(priority < 0 || priority > 100)
+    return -1;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+
+    if(p->state != UNUSED && p->pid == pid){
+      p->priority = priority;
+      release(&p->lock);
+      return 0;
+    }
+
+    release(&p->lock);
+  }
+
+  return -1;
+}
+
+int
+getsyscalls(int pid)
+{
+  struct proc *p;
+  int count = -1;
+
+  if(pid <= 0)
+    return -1;
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+
+    if(p->state != UNUSED && p->pid == pid){
+      count = p->syscall_count;
+      release(&p->lock);
+      return count;
+    }
+
+    release(&p->lock);
+  }
+
+  return -1;
 }

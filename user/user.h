@@ -24,6 +24,11 @@ int getpid(void);
 char* sys_sbrk(int,int);
 int pause(int);
 int uptime(void);
+int hello(void);
+struct proc_stat;
+int getprocs(struct proc_stat *, int);
+int set_prio(int, int);
+int getsyscalls(int);
 
 // ulib.c
 int stat(const char*, struct stat*);

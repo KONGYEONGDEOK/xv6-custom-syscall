@@ -42,3 +42,7 @@ entry("getpid");
 entry("sbrk");
 entry("pause");
 entry("uptime");
+entry("hello");
+entry("getprocs");
+entry("set_prio");
+entry("getsyscalls");

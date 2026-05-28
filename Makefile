@@ -145,6 +145,12 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
+	$U/_hello\
+	$U/_pinfo\
+	$U/_setprio\
+	$U/_badaddr\
+	$U/_privtest\
+	$U/_scount\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

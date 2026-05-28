@@ -6,6 +6,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "proc_stat.h"
 
 uint64
 sys_exit(void)
@@ -106,4 +107,63 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_hello(void)
+{
+  printf("Kernel: Hello, xv6 User!\n");
+  return 0;
+}
+
+uint64
+sys_getprocs(void)
+{
+  uint64 addr;
+  int max;
+
+  argaddr(0, &addr);
+  argint(1, &max);
+
+  if(addr == 0)
+    return -1;
+
+  if(max <= 0 || max > NPROC)
+    return -1;
+
+  if(addr + (uint64)max * sizeof(struct proc_stat) < addr)
+    return -1;
+
+  return getprocinfo(addr, max);
+}
+
+uint64
+sys_set_prio(void)
+{
+  int pid;
+  int priority;
+
+  argint(0, &pid);
+  argint(1, &priority);
+
+  if(pid <= 0)
+    return -1;
+
+  if(priority < 0 || priority > 100)
+    return -1;
+
+  return setprio(pid, priority);
+}
+
+uint64
+sys_getsyscalls(void)
+{
+  int pid;
+
+  argint(0, &pid);
+
+  if(pid <= 0)
+    return -1;
+
+  return getsyscalls(pid);
 }
